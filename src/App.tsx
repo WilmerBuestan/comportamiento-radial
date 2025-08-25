@@ -1,4 +1,6 @@
+
 import React, { useEffect, useMemo, useRef, useState } from "react";
+const APP_VERSION = "1.0.1";
 
 // ============================
 // Tipos
@@ -202,8 +204,10 @@ export default function App() {
   }, []);
 
   const size = boxSize;
-  const padding = 20;
-  const outerR = (size / 2) - padding;
+const padding = 20;
+const labelMargin = Math.max(24, size * 0.08); // margen para etiquetas de horas fuera del círculo
+const outerR = (size / 2) - (padding + labelMargin);
+
   const innerR = Math.max(32, size * 0.05);
 
   const ringCount = nDays; // 28-31 según el mes
@@ -393,7 +397,7 @@ export default function App() {
             })}
           </div>
 
-          <div className="footer">POWERED BY: <b>Wilmer Buestan</b></div>
+<div className="footer">POWERED BY: <b>Wilmer Buestan</b> — v{APP_VERSION}</div>
         </div>
       </div>
 
@@ -452,22 +456,51 @@ function SVGBehaviorChart(props: SVGProps) {
         </g>
       ))}
 
-      {/* Radios horarios (24) */}
-      {hours.map(h => {
-        const a = ((h / 24) * Math.PI * 2) - Math.PI / 2;
-        const x1 = cx + innerR * Math.cos(a);
-        const y1 = cy + innerR * Math.sin(a);
-        const x2 = cx + outerR * Math.cos(a);
-        const y2 = cy + outerR * Math.sin(a);
-        return (
-          <g key={h}>
-            <line x1={x1} y1={y1} x2={x2} y2={y2} stroke="#cbd5e1" strokeWidth={h % 6 === 0 ? 2 : 1} />
-            <text x={cx + (innerR - Math.max(14, size*0.02)) * Math.cos(a)} y={cy + (innerR - Math.max(14, size*0.02)) * Math.sin(a)} fontSize={Math.max(8, size*0.012)} textAnchor="middle" dominantBaseline="middle" fill="#334155">
-              {String(h).padStart(2, '0')}
-            </text>
-          </g>
-        );
-      })}
+{/* Radios horarios (24) con etiqueta en el borde externo */}
+{hours.map(h => {
+  const a = ((h / 24) * Math.PI * 2) - Math.PI / 2;
+
+  // puntos del radio
+  const x1 = cx + innerR * Math.cos(a);
+  const y1 = cy + innerR * Math.sin(a);
+  const x2 = cx + outerR * Math.cos(a);
+  const y2 = cy + outerR * Math.sin(a);
+
+  // tick externo (pequeña marca hacia afuera)
+  const tickLen = Math.max(6, size * 0.015);
+  const tx1 = cx + (outerR) * Math.cos(a);
+  const ty1 = cy + (outerR) * Math.sin(a);
+  const tx2 = cx + (outerR + tickLen) * Math.cos(a);
+  const ty2 = cy + (outerR + tickLen) * Math.sin(a);
+
+  // posición de la etiqueta fuera del círculo
+  const labelR = outerR + tickLen + Math.max(10, size * 0.03);
+  const lx = cx + labelR * Math.cos(a);
+  const ly = cy + labelR * Math.sin(a);
+
+  // alineación para legibilidad
+  let anchor: 'start' | 'middle' | 'end' = 'middle';
+  const c = Math.cos(a);
+  if (Math.abs(c) > 0.35) anchor = c > 0 ? 'start' : 'end';
+
+  const fontSize = Math.max(9, size * 0.015);
+  const hh = String(h).padStart(2, '0');
+
+  return (
+    <g key={h}>
+      {/* Radio */}
+      <line x1={x1} y1={y1} x2={x2} y2={y2} stroke="#cbd5e1" strokeWidth={h % 6 === 0 ? 2 : 1} />
+      {/* Tick externo */}
+      <line x1={tx1} y1={ty1} x2={tx2} y2={ty2} stroke="#334155" strokeWidth={1} />
+      {/* Etiqueta con halo blanco para contraste */}
+      <text x={lx} y={ly} fontSize={fontSize} textAnchor={anchor} dominantBaseline="middle"
+            stroke="#ffffff" strokeWidth={3} fill="#334155">{hh}</text>
+      <text x={lx} y={ly} fontSize={fontSize} textAnchor={anchor} dominantBaseline="middle"
+            fill="#334155">{hh}</text>
+    </g>
+  );
+})}
+
 
       {/* Eventos */}
       {events.map(ev => {
@@ -508,12 +541,7 @@ type PickerProps = {
   onPick: (emoji: string) => void;
 };
 
-const EMOJIS: string[] = [
-  "⛏️","⛽","🌲","🪧","⚠️","🔫","🚨","🧨","🧭","🛰️","📡",
-  "🚁","🛡️","🧪","📷","🎯","🧰","🪓","🔧","🧯","💣","📍","🕘",
-  "🌙","☀️","🌧️","🌀","🔥","💼","📦","🚧","📜","🏛️","🔒",
-  "🏴","🔭","🔍"
-];
+const EMOJIS = ("⛏️,⛽,🌲,🪧,⚠️,🔫,🚨,🧨,🧭,🛰️,📡,🛻,🚁,🛡️,🗺️,🧪,📷,🎯,🧱,🧰,🪓,🔧,🧯,💣,📍,🕘,🌙,☀️,🌧️,🌀,🔥,🪙,💼,📦,🚧,📜,🏛️,🔒,🏴,🔭,🔍").split(",").map(s => s.trim());
 
 function EmojiPickerModal({ onClose, onPick }: PickerProps) {
   return (
@@ -532,4 +560,3 @@ function EmojiPickerModal({ onClose, onPick }: PickerProps) {
     </div>
   );
 }
-
