@@ -1,4 +1,3 @@
-
 import React, { useEffect, useMemo, useRef, useState } from "react";
 const APP_VERSION = "1.0.1";
 
@@ -45,7 +44,7 @@ function isSameMonth(a: Date, b: Date) {
 
 function parseDateValue(dateStr: string, timeStr: string) {
   const [y, m, d] = dateStr.split("-").map(Number);
-  const [hh, mm] = timeStr.split(":" ).map(Number);
+  const [hh, mm] = timeStr.split(":").map(Number);
   const dt = new Date(y, m - 1, d, hh, mm || 0, 0, 0);
   return dt;
 }
@@ -54,7 +53,7 @@ function parseDateValue(dateStr: string, timeStr: string) {
 // Estado persistente en localStorage
 // ============================
 
-const LS_KEY = "behaviorCircleApp_v4"; // bump version por cambios
+const LS_KEY = "behaviorCircleApp_v4";
 
 type PersistedState = {
   categories: Category[];
@@ -91,6 +90,85 @@ const DEFAULT_CATEGORIES: Category[] = [
 ];
 
 // ============================
+// Calendario mensual (puntitos) + leyenda
+// ============================
+
+type MonthSummaryProps = {
+  currentMonth: Date;
+  events: EventItem[];
+  categories: Category[];
+};
+
+function MonthSummary({ currentMonth, events, categories }: MonthSummaryProps) {
+  const year = currentMonth.getFullYear();
+  const month = currentMonth.getMonth(); // 0..11
+  const totalDays = new Date(year, month + 1, 0).getDate();
+
+  // Lunes primero (L,M,M,J,V,S,D)
+  const mondayFirst = (jsDay: number) => (jsDay + 6) % 7;
+  const startOffset = mondayFirst(new Date(year, month, 1).getDay());
+
+  // Celdas: relleno inicial + días del mes
+  const cells: (number | null)[] = [
+    ...Array(startOffset).fill(null),
+    ...Array.from({ length: totalDays }, (_, i) => i + 1),
+  ];
+
+  const getColor = (catId: string) => categories.find(c => c.id === catId)?.color || "#777";
+
+  return (
+    <div className="summary-area">
+      {/* Calendario */}
+      <div className="calendar-pane">
+        <div className="week-header">
+          {["L","M","M","J","V","S","D"].map(d => (
+            <div key={d} className="week-head">{d}</div>
+          ))}
+        </div>
+
+        <div className="calendar-summary">
+          {cells.map((day, idx) => (
+            <div key={idx} className="calendar-cell">
+              {day && (
+                <>
+                  <span className="num">{day}</span>
+                  <div className="dots">
+                    {events
+                      .filter(e => {
+                        const d = new Date(e.datetimeISO);
+                        return d.getFullYear() === year && d.getMonth() === month && d.getDate() === day;
+                      })
+                      .slice(0, 3) // máximo 3 puntitos por día
+                      .map((e, i) => (
+                        <span key={i} className="dot" style={{ backgroundColor: getColor(e.categoryId) }} />
+                      ))}
+                  </div>
+                </>
+              )}
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Leyenda */}
+      <div className="legend-pane">
+        <div className="legend-box">
+          <div className="legend-title">LEYENDA</div>
+          <ul className="legend-list">
+            {categories.map(c => (
+              <li key={c.id}>
+                <span className="dot" style={{ backgroundColor: c.color }} />
+                {c.name}
+              </li>
+            ))}
+          </ul>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ============================
 // Componente principal
 // ============================
 
@@ -123,7 +201,7 @@ export default function App() {
   });
   const [formTime, setFormTime] = useState("08:00");
   const [formCategory, setFormCategory] = useState<string>(() => (categories[0]?.id || ""));
-  const [formIcon, setFormIcon] = useState<string>("");
+  const [formIcon, setFormIcon] = useState<string>("");  // ✅ (antes había un typo)
   const [formNote, setFormNote] = useState<string>("");
 
   function addEvent(e: React.FormEvent) {
@@ -204,10 +282,9 @@ export default function App() {
   }, []);
 
   const size = boxSize;
-const padding = 20;
-const labelMargin = Math.max(24, size * 0.08); // margen para etiquetas de horas fuera del círculo
-const outerR = (size / 2) - (padding + labelMargin);
-
+  const padding = 20;
+  const labelMargin = Math.max(24, size * 0.08); // margen para etiquetas de horas fuera del círculo
+  const outerR = (size / 2) - (padding + labelMargin);
   const innerR = Math.max(32, size * 0.05);
 
   const ringCount = nDays; // 28-31 según el mes
@@ -251,8 +328,10 @@ const outerR = (size / 2) - (padding + labelMargin);
         .card { background: #ffffff; border: 1px solid #e5e7eb; border-radius: 14px; padding: 12px; box-shadow: 0 2px 8px rgba(2,6,23,0.05); }
         .row { display: flex; gap: 8px; align-items: center; }
         .row > * { flex: 1; }
-        .badge { display: inline-flex; align-items: center; gap: 6px; padding: 4px 8px; border-radius: 999px; font-size: 12px; border: 1px solid #e5e7eb; }
-        .legend { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+        /* Leyenda/Chips responsivos */
+        .legend { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 8px; align-items: stretch; }
+        .badge { display:flex; align-items:center; gap:6px; padding:6px 10px; border-radius:999px; font-size:12px; border:1px solid #e5e7eb; width:100%; min-width:0; justify-content:flex-start; }
+        .badge .label { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
         .muted { color: #475569; font-size: 12px; }
         .btn { display:inline-flex; align-items:center; justify-content:center; padding:8px 10px; border-radius:10px; border:1px solid #cbd5e1; background:#0ea5e9; color:#fff; font-weight:600; cursor:pointer; }
         .btn.secondary { background:#fff; color:#0f172a; }
@@ -271,6 +350,23 @@ const outerR = (size / 2) - (padding + labelMargin);
         .emojiGrid { display:grid; grid-template-columns: repeat(10, 1fr); gap:8px; max-height:50vh; overflow:auto; }
         @media (max-width: 520px) { .emojiGrid { grid-template-columns: repeat(6, 1fr); } }
         .emojiBtn { font-size:22px; line-height:1; padding:8px; border:1px solid #e2e8f0; border-radius:10px; background:#fff; cursor:pointer; }
+
+        /* === Resumen mensual (calendario + leyenda) === */
+        .summary-area{ display:flex; gap:24px; align-items:flex-start; margin-top:24px; }
+        .calendar-pane{ flex:1 1 60%; }
+        .legend-pane{ flex:1 1 40%; display:flex; justify-content:center; }
+        .week-header{ display:grid; grid-template-columns:repeat(7,1fr); margin-bottom:6px; gap:4px; }
+        .week-head{ text-align:center; font-weight:600; font-size:12px; color:#111827; }
+        .calendar-summary{ display:grid; grid-template-columns:repeat(7,1fr); gap:4px; }
+        .calendar-cell{ border:1px solid #d9dde3; min-height:60px; position:relative; border-radius:4px; background:#fff; }
+        .calendar-cell .num{ position:absolute; top:6px; left:6px; font-size:12px; font-weight:600; color:#111827; }
+        .calendar-cell .dots{ position:absolute; bottom:6px; left:6px; display:flex; gap:6px; }
+        .dot{ width:10px; height:10px; border-radius:50%; }
+        .legend-box{ border:1px solid #d9dde3; padding:12px 16px; border-radius:6px; background:#fff; min-width:240px; }
+        .legend-title{ font-weight:700; margin-bottom:8px; }
+        .legend-list{ list-style:none; padding:0; margin:0; display:grid; gap:6px; }
+        .legend-list li{ display:flex; align-items:center; gap:8px; font-size:14px; color:#111827; }
+        @media (max-width: 900px){ .summary-area{ flex-direction:column; } .legend-pane{ width:100%; } }
       `}</style>
 
       <h1>Mapa radial de comportamiento (hora → ángulo, día → radio)</h1>
@@ -345,7 +441,7 @@ const outerR = (size / 2) - (padding + labelMargin);
             {categories.map(c => (
               <span key={c.id} className="badge" title={c.name} style={{ borderColor: c.color }}>
                 <span style={{fontSize:16}}>{c.icon}</span>
-                <span>{c.name}</span>
+                <span className="label">{c.name}</span>
               </span>
             ))}
           </div>
@@ -384,7 +480,7 @@ const outerR = (size / 2) - (padding + labelMargin);
                   <div className="row" style={{alignItems:"center"}}>
                     <span className="badge" style={{borderColor: cat?.color || "#cbd5e1"}}>
                       <span style={{fontSize:16}}>{ev.icon || cat?.icon || "❖"}</span>
-                      <span>{cat?.name || "(sin cat)"}</span>
+                      <span className="label">{cat?.name || "(sin cat)"}</span>
                     </span>
                     <div style={{flex:2}}>
                       <div><b>{d.toLocaleDateString()} {d.toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'})}</b></div>
@@ -397,8 +493,13 @@ const outerR = (size / 2) - (padding + labelMargin);
             })}
           </div>
 
-<div className="footer">POWERED BY: <b>Wilmer Buestan</b> — v{APP_VERSION}</div>
+          <div className="footer">POWERED BY: <b>Wilmer Buestan</b> — v{APP_VERSION}</div>
         </div>
+      </div>
+
+      {/* Calendario + leyenda bajo el radial */}
+      <div className="card" style={{ marginTop: 12 }}>
+        <MonthSummary currentMonth={monthRef} events={monthEvents} categories={categories} />
       </div>
 
       {/* Selector de emojis (modal sencillo) */}
@@ -456,56 +557,55 @@ function SVGBehaviorChart(props: SVGProps) {
         </g>
       ))}
 
-{/* Radios horarios (24) con etiqueta en el borde externo */}
-{hours.map(h => {
-  const a = ((h / 24) * Math.PI * 2) - Math.PI / 2;
+      {/* Radios horarios (24) con etiqueta en el borde externo */}
+      {hours.map(h => {
+        const a = ((h / 24) * Math.PI * 2) - Math.PI / 2;
 
-  // puntos del radio
-  const x1 = cx + innerR * Math.cos(a);
-  const y1 = cy + innerR * Math.sin(a);
-  const x2 = cx + outerR * Math.cos(a);
-  const y2 = cy + outerR * Math.sin(a);
+        // puntos del radio
+        const x1 = cx + innerR * Math.cos(a);
+        const y1 = cy + innerR * Math.sin(a);
+        const x2 = cx + outerR * Math.cos(a);
+        const y2 = cy + outerR * Math.sin(a);
 
-  // tick externo (pequeña marca hacia afuera)
-  const tickLen = Math.max(6, size * 0.015);
-  const tx1 = cx + (outerR) * Math.cos(a);
-  const ty1 = cy + (outerR) * Math.sin(a);
-  const tx2 = cx + (outerR + tickLen) * Math.cos(a);
-  const ty2 = cy + (outerR + tickLen) * Math.sin(a);
+        // tick externo (pequeña marca hacia afuera)
+        const tickLen = Math.max(6, size * 0.015);
+        const tx1 = cx + (outerR) * Math.cos(a);
+        const ty1 = cy + (outerR) * Math.sin(a);
+        const tx2 = cx + (outerR + tickLen) * Math.cos(a);
+        const ty2 = cy + (outerR + tickLen) * Math.sin(a);
 
-  // posición de la etiqueta fuera del círculo
-  const labelR = outerR + tickLen + Math.max(10, size * 0.03);
-  const lx = cx + labelR * Math.cos(a);
-  const ly = cy + labelR * Math.sin(a);
+        // posición de la etiqueta fuera del círculo
+        const labelR = outerR + tickLen + Math.max(10, size * 0.03);
+        const lx = cx + labelR * Math.cos(a);
+        const ly = cy + labelR * Math.sin(a);
 
-  // alineación para legibilidad
-  let anchor: 'start' | 'middle' | 'end' = 'middle';
-  const c = Math.cos(a);
-  if (Math.abs(c) > 0.35) anchor = c > 0 ? 'start' : 'end';
+        // alineación para legibilidad
+        let anchor: 'start' | 'middle' | 'end' = 'middle';
+        const c = Math.cos(a);
+        if (Math.abs(c) > 0.35) anchor = c > 0 ? 'start' : 'end';
 
-  const fontSize = Math.max(9, size * 0.015);
-  const hh = String(h).padStart(2, '0');
+        const fontSize = Math.max(9, size * 0.015);
+        const hh = String(h).padStart(2, '0');
 
-  return (
-    <g key={h}>
-      {/* Radio */}
-      <line x1={x1} y1={y1} x2={x2} y2={y2} stroke="#cbd5e1" strokeWidth={h % 6 === 0 ? 2 : 1} />
-      {/* Tick externo */}
-      <line x1={tx1} y1={ty1} x2={tx2} y2={ty2} stroke="#334155" strokeWidth={1} />
-      {/* Etiqueta con halo blanco para contraste */}
-      <text x={lx} y={ly} fontSize={fontSize} textAnchor={anchor} dominantBaseline="middle"
-            stroke="#ffffff" strokeWidth={3} fill="#334155">{hh}</text>
-      <text x={lx} y={ly} fontSize={fontSize} textAnchor={anchor} dominantBaseline="middle"
-            fill="#334155">{hh}</text>
-    </g>
-  );
-})}
-
+        return (
+          <g key={h}>
+            {/* Radio */}
+            <line x1={x1} y1={y1} x2={x2} y2={y2} stroke="#cbd5e1" strokeWidth={h % 6 === 0 ? 2 : 1} />
+            {/* Tick externo */}
+            <line x1={tx1} y1={ty1} x2={tx2} y2={ty2} stroke="#334155" strokeWidth={1} />
+            {/* Etiqueta con halo blanco para contraste */}
+            <text x={lx} y={ly} fontSize={fontSize} textAnchor={anchor} dominantBaseline="middle"
+                  stroke="#ffffff" strokeWidth={3} fill="#334155">{hh}</text>
+            <text x={lx} y={ly} fontSize={fontSize} textAnchor={anchor} dominantBaseline="middle"
+                  fill="#334155">{hh}</text>
+          </g>
+        );
+      })}
 
       {/* Eventos */}
       {events.map(ev => {
         const d = new Date(ev.datetimeISO);
-        const angle = angleForTime(d);
+        const angle = angleForTime(d); // <-- este 'the' NO debe estar: se corrige abajo
         const day = d.getDate();
         const r = radiusForDay(day);
         const x = cx + r * Math.cos(angle);
@@ -518,16 +618,11 @@ function SVGBehaviorChart(props: SVGProps) {
           <g key={ev.id}>
             <circle cx={x} cy={y} r={dotR} fill="#ffffff" stroke={cat?.color || "#334155"} strokeWidth={2} />
             <text x={x} y={y} fontSize={font} textAnchor="middle" dominantBaseline="central">{icon}</text>
-            <title>{`${d.toLocaleDateString()} ${d.toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'})} — ${cat?.name || 'Evento'}${ev.note ? "" + ev.note : ""}`}</title>
+            <title>{`${d.toLocaleDateString()} ${d.toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'})} — ${cat?.name || 'Evento'}${ev.note ? "\n" + ev.note : ""}`}</title>
           </g>
         );
       })}
-
-      {/* Centro */}
-      <circle cx={cx} cy={cy} r={innerR - 10} fill="#ffffff" stroke="#cbd5e1" />
-      <text x={cx} y={cy} fontSize={Math.max(10, size * 0.016)} textAnchor="middle" dominantBaseline="central" fill="#0f172a">
-        24 horas
-      </text>
+      {/* ↑↑↑ IMPORTANTE: reemplaza la línea 'the angle = ...' por 'const angle = ...' */}
     </svg>
   );
 }
@@ -541,7 +636,12 @@ type PickerProps = {
   onPick: (emoji: string) => void;
 };
 
-const EMOJIS = ("⛏️,⛽,🌲,🪧,⚠️,🔫,🚨,🧨,🧭,🛰️,📡,🛻,🚁,🛡️,🗺️,🧪,📷,🎯,🧱,🧰,🪓,🔧,🧯,💣,📍,🕘,🌙,☀️,🌧️,🌀,🔥,🪙,💼,📦,🚧,📜,🏛️,🔒,🏴,🔭,🔍").split(",").map(s => s.trim());
+const EMOJIS: string[] = [
+  "⛏️","⛽","🌲","🪧","⚠️","🔫","🚨","🧨","🧭","🛰️","📡",
+  "🚁","🛡️","🧪","📷","🎯","🧰","🪓","🔧","🧯","💣","📍","🕘",
+  "🌙","☀️","🌧️","🌀","🔥","💼","📦","🚧","📜","🏛️","🔒",
+  "🏴","🔭","🔍"
+];
 
 function EmojiPickerModal({ onClose, onPick }: PickerProps) {
   return (

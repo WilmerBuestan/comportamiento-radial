@@ -40,3 +40,105 @@
 .read-the-docs {
   color: #888;
 }
+
+
+/* === Resumen mensual (calendario + leyenda) === */
+.summary-area{
+  display:flex;
+  gap:24px;
+  align-items:flex-start;
+  margin-top:24px;
+}
+
+.calendar-pane{ flex:1 1 60%; }
+
+.legend-pane{
+  flex:1 1 40%;
+  display:flex;
+  justify-content:center;
+}
+
+.week-header{
+  display:grid;
+  grid-template-columns:repeat(7,1fr);
+  margin-bottom:6px;
+  gap:4px;
+}
+
+.week-head{
+  text-align:center;
+  font-weight:600;
+  font-size:12px;
+  color:#111827;
+}
+
+.calendar-summary{
+  display:grid;
+  grid-template-columns:repeat(7,1fr);
+  gap:4px;
+}
+
+.calendar-cell{
+  border:1px solid #d9dde3;
+  min-height:60px;
+  position:relative;
+  border-radius:4px;
+  background:#fff;
+}
+
+.calendar-cell .num{
+  position:absolute;
+  top:6px;
+  left:6px;
+  font-size:12px;
+  font-weight:600;
+  color:#111827;
+}
+
+.calendar-cell .dots{
+  position:absolute;
+  bottom:6px;
+  left:6px;
+  display:flex;
+  gap:6px;
+}
+
+.dot{
+  width:10px;
+  height:10px;
+  border-radius:50%;
+}
+
+.legend-box{
+  border:1px solid #d9dde3;
+  padding:12px 16px;
+  border-radius:6px;
+  background:#fff;
+  min-width:240px;
+}
+
+.legend-title{
+  font-weight:700;
+  margin-bottom:8px;
+}
+
+.legend-list{
+  list-style:none;
+  padding:0;
+  margin:0;
+  display:grid;
+  gap:6px;
+}
+
+.legend-list li{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  font-size:14px;
+  color:#111827;
+}
+
+@media (max-width: 900px){
+  .summary-area{ flex-direction:column; }
+  .legend-pane{ width:100%; }
+}
